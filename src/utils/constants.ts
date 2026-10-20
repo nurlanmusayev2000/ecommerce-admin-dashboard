@@ -1,8 +1,23 @@
 import type { OrderStatus, ProductStatus } from '@/types';
 
-export const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
-  'http://localhost:3001';
+const configuredApiUrl = import.meta.env.VITE_API_BASE_URL as
+  | string
+  | undefined;
+const mockApiFlag = import.meta.env.VITE_USE_MOCK_API as string | undefined;
+
+/**
+ * Serve the API from MSW in the browser instead of json-server. On by default
+ * in production builds with no VITE_API_BASE_URL (e.g. on Vercel), off in dev.
+ * VITE_USE_MOCK_API=true|false overrides the default.
+ */
+export const USE_MOCK_API = mockApiFlag
+  ? mockApiFlag === 'true'
+  : import.meta.env.PROD && !configuredApiUrl;
+
+// The mock uses a same-origin path so an HTTPS deployment never requests http://localhost.
+export const API_BASE_URL = USE_MOCK_API
+  ? '/api'
+  : (configuredApiUrl ?? 'http://localhost:3001');
 
 export const AUTH_TOKEN_KEY = 'admin_dashboard_token';
 export const AUTH_USER_KEY = 'admin_dashboard_user';

@@ -7,6 +7,7 @@
     "dev": "vite",
     "server": "json-server db.json --port 3001",
     "dev:full": "concurrently -k -n vite,api \"npm:dev\" \"npm:server\"",
+    "dev:mock": "vite --mode mock",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
