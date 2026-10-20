@@ -1,77 +1,115 @@
 # E-Commerce Admin Dashboard
 
-A production-style admin dashboard for managing products, orders, and customers.
+An admin dashboard for managing an online store's products, orders and customers. It is built with React, TypeScript and Redux Toolkit, and runs entirely in the browser: a mock API built with Mock Service Worker serves the data, so no backend is needed.
+
+![Signing in and filtering products](docs/screenshots/demo.gif)
 
 ## Features
 
-- Dashboard with KPI cards, revenue trend, order status breakdown, top products, and recent orders
-- Product management: search, filter (category/status/price), sort, paginate, create, edit, delete
-- Order management: search, filter by status, sort, paginate, status updates, item breakdown
-- Customer management: search, sort, paginate, order history
-- Mock JWT authentication with protected routes and persisted sessions
-- Dark mode, toast notifications, loading skeletons, error boundaries
+- **Dashboard:** KPI cards, a revenue trend, an order status breakdown, top products by revenue and recent orders.
+- **Products:** search, filter by category, status and price range, sort, paginate, and create, edit or delete products.
+- **Orders:** search by order number, filter by status, sort, paginate, view item breakdowns and update order status.
+- **Customers:** search, sort, paginate and view each customer's order history.
+- **Authentication:** mock JWT sign-in with protected routes and a persisted session.
+- **UI:** dark mode, toast notifications, loading skeletons, error boundaries and lazily loaded routes.
 
-## Tech Stack
+| Products, filtered | Order detail | Dark mode |
+| --- | --- | --- |
+| ![Products table filtered to Electronics over $100](docs/screenshots/products-filtered.png) | ![Order ORD-0001 with its items](docs/screenshots/order-detail.png) | ![Dashboard in dark mode](docs/screenshots/dark-mode.png) |
 
-React 18, TypeScript, Redux Toolkit + RTK Query, React Router v6, React Hook Form, Tailwind CSS v4, Recharts, Vite, Vitest + React Testing Library, json-server (mock API).
+## Tech stack
 
-## Getting Started
+| Area | Library |
+| --- | --- |
+| UI | React 19, Tailwind CSS 4, React Icons |
+| Language | TypeScript 6 |
+| State and data fetching | Redux Toolkit 2 with RTK Query, React Redux 9 |
+| Routing | React Router 7 |
+| Forms | React Hook Form 7 |
+| Charts | Recharts 3 |
+| Mock API | MSW 2 (in the browser), json-server 1.0 beta (local server) |
+| Build | Vite 8 |
+| Testing | Vitest 5, React Testing Library 16 |
+| Linting | oxlint |
 
-```bash
-npm install
-npm run dev:full   # starts the Vite dev server (5173) and the mock API (3001)
-```
+## Architecture decisions
 
-Sign in with the demo credentials shown on the login screen:
+### Why RTK Query
 
-```
-admin@example.com / admin123
-```
+Most of the app's state is server data: lists that are paginated, filtered and sorted, plus records that change. RTK Query handles fetching, caching, loading and error states, and keeps the data up to date, so components don't need hand-written thunks or reducers for it.
 
-### Other scripts
+- **One API slice, split by feature.** `baseApi` sets the base URL and attaches the auth token. `productsApi`, `ordersApi`, `customersApi` and `dashboardApi` add their endpoints with `injectEndpoints`.
+- **Cache tags keep lists up to date.** Each query provides tags such as `{ type: 'Product', id }` and `{ type: 'Product', id: 'LIST' }`. Mutations invalidate them, so after you edit a product, both its detail page and the product list refetch automatically.
+- **Derived data.** The dashboard endpoint uses `queryFn` to fetch products, orders and customers in parallel and compute KPIs and chart data from them. It provides the `LIST` tags, so it refreshes after any change.
+- **Plain Redux for client state.** Authentication, dark mode and each table's filters, sort and page live in small slices. Filters are kept when you navigate away and come back.
 
-```bash
-npm run dev      # Vite dev server only
-npm run dev:mock  # Vite dev server with the in-browser MSW mock API (no json-server)
-npm run server    # json-server mock API only
-npm run build     # type-check and build for production
-npm run test      # run the test suite
-npm run lint      # run oxlint
-```
+### Running without a backend: MSW
 
-## Project Structure
+Locally, the API can be [json-server](https://github.com/typicode/json-server), seeded from `db.json`. A static site has no server to run it on, so the same API is also served inside the browser by [MSW](https://mswjs.io) (Mock Service Worker):
+
+1. `main.tsx` registers a service worker, `public/mockServiceWorker.js`, before React renders. A service worker can intercept every request the page makes, so it catches RTK Query's API calls before they reach the network.
+2. The worker passes each request to the handlers in `src/mocks/handlers.ts`, which reproduce json-server's REST routes and status codes. RTK Query can't tell it isn't talking to a real server, so the API code is the same in both modes.
+3. `src/mocks/jsonServerQuery.ts` reimplements the json-server features the app uses: `_page`/`_per_page` pagination, `_sort=field` and `_sort=-field`, and operator filters such as `price:gte=50`. It returns the same results as json-server for every query the app sends.
+4. `src/mocks/db.ts` keeps the data in memory, starting from `db.json`. Changes are saved to localStorage, so they survive a reload. When `db.json` changes, saved data is discarded.
+
+The mock API is on by default in production builds and when you run `npm run dev:mock`. `VITE_USE_MOCK_API=true` or `false` overrides this. In mock mode, requests go to the same-origin `/api` path.
+
+### Folder structure
 
 ```
 src/
 ├── app/            # Redux store and typed hooks
 ├── components/
-│   ├── common/     # Reusable UI primitives (Button, Modal, Table skeletons, Toast...)
-│   ├── layout/     # Header, Sidebar, Layout shell
-│   └── features/   # Feature-specific components (Products, Orders, Customers, Dashboard)
+│   ├── common/     # Reusable UI: Button, Modal, Pagination, skeletons, Toast...
+│   ├── layout/     # Header, Sidebar and the layout shell
+│   └── features/   # Feature components: Products, Orders, Customers, Dashboard
 ├── hooks/          # useAuth, useToast, useDebounce
-├── pages/          # Route-level components
+├── mocks/          # MSW worker, handlers, json-server query engine, in-memory db
+├── pages/          # Route-level components, lazily loaded
 ├── services/
-│   ├── api/        # RTK Query API slices (products, orders, customers, dashboard)
-│   └── auth/        # Mock auth service
-├── store/slices/   # authSlice, uiSlice, filterSlice
+│   ├── api/        # RTK Query API slices
+│   └── auth/       # Mock auth service
+├── store/slices/   # auth, ui and filter slices
 ├── types/          # Shared TypeScript types
 └── utils/          # Formatters, validators, constants
 ```
 
-## Mock API
+## Running locally
 
-The mock API is powered by [json-server](https://github.com/typicode/json-server) v1, seeded from `db.json`. It supports pagination (`_page`/`_per_page`), sorting (`_sort=field` or `_sort=-field`), and operator-based filtering (`field:operator=value`, e.g. `price:gte=50`).
+```bash
+npm install
+npm run dev:mock   # http://localhost:5173, no server needed
+```
 
-In production builds the same API is served in the browser by [MSW](https://mswjs.io) (Mock Service Worker), so the app needs no backend:
+Sign in with **admin@example.com** / **admin123**. Your changes are saved in the browser's localStorage. To start again from `db.json`, clear the site data.
 
-- `src/mocks/jsonServerQuery.ts` reimplements json-server's pagination, sorting and filtering.
-- `src/mocks/db.ts` holds the data in memory, seeded from `db.json`. Changes are saved to localStorage and dropped when `db.json` changes.
-- `src/mocks/handlers.ts` maps json-server's REST routes onto that database, under `/api`.
+To run against a real json-server instead:
 
-MSW is on by default in production builds when `VITE_API_BASE_URL` is not set, and off in development. Set `VITE_USE_MOCK_API=true` or `false` to override this.
+```bash
+npm run dev:full   # Vite on 5173 and json-server on 3001
+```
 
-## Deploying to Vercel
+json-server writes changes back to `db.json`, so check `git diff db.json` before committing.
 
-Import the repository in Vercel. It detects Vite, runs `npm run build` and serves `dist/`. No environment variables are needed. `vercel.json` rewrites unknown paths to `index.html`, so reloading a page such as `/products` works.
+| Script | What it does |
+| --- | --- |
+| `npm run dev:mock` | Vite dev server with the in-browser MSW API |
+| `npm run dev:full` | Vite dev server and json-server together |
+| `npm run dev` | Vite dev server only, expecting an API on port 3001 |
+| `npm run server` | json-server only |
+| `npm run build` | Type-check and build for production |
+| `npm run preview` | Serve the production build, which uses MSW |
+| `npm run test` | Run the tests with Vitest in watch mode |
+| `npm run lint` | Run oxlint |
 
-To try the production build locally, run `npm run build && npm run preview`.
+## Testing
+
+```bash
+npm run test -- --run   # run the suite once, without watch mode
+```
+
+Vitest runs the tests in jsdom with React Testing Library:
+
+- **Components and pages:** `Button` and `LoginPage`, including form validation and signing in with the demo credentials.
+- **Utilities:** formatters and validators.
+- **Mock API:** the query engine's filtering, sorting and pagination, the in-memory database and its persistence, and the MSW handlers. The handler tests use `msw/node`, so they send real `fetch` requests.
