@@ -13,9 +13,11 @@ An admin dashboard for managing an online store's products, orders and customers
 - **Authentication:** mock JWT sign-in with protected routes and a persisted session.
 - **UI:** dark mode, toast notifications, loading skeletons, error boundaries and lazily loaded routes.
 
-| Products, filtered | Order detail | Dark mode |
-| --- | --- | --- |
-| ![Products table filtered to Electronics over $100](docs/screenshots/products-filtered.png) | ![Order ORD-0001 with its items](docs/screenshots/order-detail.png) | ![Dashboard in dark mode](docs/screenshots/dark-mode.png) |
+| Dashboard | Products, filtered |
+| --- | --- |
+| ![Dashboard with KPI cards and charts](docs/screenshots/dashboard.png) | ![Products table filtered to Electronics over $100](docs/screenshots/products-filtered.png) |
+| **Order detail** | **Dark mode** |
+| ![Order ORD-0001 with its items](docs/screenshots/order-detail.png) | ![Dashboard in dark mode](docs/screenshots/dark-mode.png) |
 
 ## Tech stack
 
