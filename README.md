@@ -1,5 +1,7 @@
 # E-Commerce Admin Dashboard
 
+[![CI](https://github.com/nurlanmusayev2000/ecommerce-admin-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/nurlanmusayev2000/ecommerce-admin-dashboard/actions/workflows/ci.yml)
+
 An admin dashboard for managing an online store's products, orders and customers. It is built with React, TypeScript and Redux Toolkit, and runs entirely in the browser: a mock API built with Mock Service Worker serves the data, so no backend is needed.
 
 ![Signing in and filtering products](docs/screenshots/demo.gif)
@@ -108,10 +110,29 @@ json-server writes changes back to `db.json`, so check `git diff db.json` before
 
 ```bash
 npm run test -- --run   # run the suite once, without watch mode
+npm run test            # watch mode
 ```
 
-Vitest runs the tests in jsdom with React Testing Library:
+Vitest runs the tests in jsdom with React Testing Library.
+
+**Integration tests** (`src/tests/integration/`) render the whole app at a URL, with a fresh Redux store for each test. The API is served by the app's own MSW handlers through `msw/node`. So every request goes through RTK Query, `fetch` and the same json-server-compatible handlers and `db.json` data the app uses in production. Expected results are computed from `db.json`, and the data is reset after each test.
+
+- **Products page:**
+  - The list loads, and search, category and price filters, sorting and pagination all work.
+  - Creating, editing and deleting a product updates the list afterwards.
+  - Form validation runs before saving, and cancelling a delete keeps the product.
+- **Orders page:**
+  - Filtering by status works.
+  - Updating an order's status from its detail page changes it, and the list then shows the order under its new status.
+  - A failed update shows an error and keeps the old status.
+- **Protected routes:**
+  - Opening `/products` (or any other page) while logged out redirects to `/login` without calling the API.
+  - Logging in returns you to the page you asked for, and logging out goes back to `/login`.
+
+**Unit tests:**
 
 - **Components and pages:** `Button` and `LoginPage`, including form validation and signing in with the demo credentials.
 - **Utilities:** formatters and validators.
-- **Mock API:** the query engine's filtering, sorting and pagination, the in-memory database and its persistence, and the MSW handlers. The handler tests use `msw/node`, so they send real `fetch` requests.
+- **Mock API:** the query engine's filtering, sorting and pagination, the in-memory database and its persistence, and the MSW handlers.
+
+[GitHub Actions](.github/workflows/ci.yml) runs lint, build and the tests on Node 22 for every push and pull request.
