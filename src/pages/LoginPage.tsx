@@ -26,16 +26,19 @@ export function LoginPage() {
     defaultValues: { email: '', password: '', rememberMe: true },
   });
 
+  // ProtectedRoute sends the page the user tried to open; go back there after login.
+  const redirectTo =
+    (location.state as LocationState | null)?.from?.pathname ?? '/dashboard';
+
   if (isAuthenticated) {
-    const state = location.state as LocationState | null;
-    return <Navigate to={state?.from?.pathname ?? '/dashboard'} replace />;
+    return <Navigate to={redirectTo} replace />;
   }
 
   const onSubmit = async (data: LoginCredentials) => {
     setAuthError(null);
     try {
       await login(data);
-      navigate('/dashboard', { replace: true });
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : 'Login failed');
     }
