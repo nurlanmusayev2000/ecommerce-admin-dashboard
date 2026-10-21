@@ -6,6 +6,16 @@ import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterAll, afterEach, beforeAll } from 'vitest';
 
 import App from '@/App';
+// App lazy-loads its pages. Importing them here means Vite transforms them while the
+// test file loads, not during a findBy wait, which could otherwise time out.
+import '@/pages/CustomerDetailPage';
+import '@/pages/CustomersPage';
+import '@/pages/DashboardPage';
+import '@/pages/NotFound';
+import '@/pages/OrderDetailPage';
+import '@/pages/OrdersPage';
+import '@/pages/ProductDetailPage';
+import '@/pages/ProductsPage';
 import { makeStore } from '@/app/store';
 import { mockDb } from '@/mocks/db';
 import { handlers } from '@/mocks/handlers';
