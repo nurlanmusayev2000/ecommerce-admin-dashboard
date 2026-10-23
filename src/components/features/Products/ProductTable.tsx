@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { clsx } from 'clsx';
@@ -62,6 +62,14 @@ export function ProductTable({ onEdit }: ProductTableProps) {
     minPrice: filters.minPrice,
     maxPrice: filters.maxPrice,
   });
+
+  // If the list shrinks (e.g. after deleting the last items on the last page), move back to the new last page
+  // instead of showing "Page 3 of 2" above the last page's rows.
+  useEffect(() => {
+    if (data && data.pages < page) {
+      dispatch(setProductsPage(data.pages));
+    }
+  }, [data, page, dispatch]);
 
   const handleSort = (field: string) => {
     dispatch(

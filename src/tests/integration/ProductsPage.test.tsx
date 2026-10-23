@@ -99,6 +99,27 @@ describe('Products page', () => {
     expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled();
   });
 
+  it('moves back to the last page after deleting every product on it (BUG-003)', async () => {
+    const { user } = await openProducts();
+    await user.click(screen.getByRole('button', { name: 'Next page' }));
+    await user.click(screen.getByRole('button', { name: 'Next page' }));
+    const lastPage = newestFirst(seed.products, 3);
+    await waitFor(() => expect(names()).toEqual(lastPage));
+    expect(lastPage).toHaveLength(5);
+
+    for (const name of lastPage) {
+      await user.click(screen.getByRole('button', { name: `Delete ${name}` }));
+      const dialog = await screen.findByRole('dialog', { name: 'Delete product' });
+      await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    }
+
+    const remaining = seed.products.filter((p) => !lastPage.includes(p.name));
+    await waitFor(() => expect(screen.getByText(`Page 2 of 2 · ${remaining.length} total`)).toBeInTheDocument());
+    expect(names()).toEqual(newestFirst(remaining, 2));
+    expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled();
+  });
+
   it('creates a product and shows it at the top of the list', async () => {
     const { user } = await openProducts();
 

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { clsx } from 'clsx';
@@ -40,6 +41,14 @@ export function OrderTable() {
     search: searchTerm || undefined,
     status,
   });
+
+  // If the list shrinks (e.g. after orders are removed elsewhere), move back to the new last page
+  // instead of showing "Page 3 of 2" above the last page's rows.
+  useEffect(() => {
+    if (data && data.pages < page) {
+      dispatch(setOrdersPage(data.pages));
+    }
+  }, [data, page, dispatch]);
 
   const handleSort = (field: string) => {
     dispatch(

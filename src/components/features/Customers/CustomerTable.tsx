@@ -48,6 +48,14 @@ export function CustomerTable() {
     search: searchTerm || undefined,
   });
 
+  // If the list shrinks (e.g. after customers are removed elsewhere), move back to the new last page
+  // instead of showing "Page 3 of 2" above the last page's rows.
+  useEffect(() => {
+    if (data && data.pages < page) {
+      dispatch(setCustomersPage(data.pages));
+    }
+  }, [data, page, dispatch]);
+
   const handleSort = (field: string) => {
     dispatch(
       setCustomersSort({

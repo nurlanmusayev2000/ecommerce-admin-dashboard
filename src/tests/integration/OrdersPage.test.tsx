@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import seed from '../../../db.json';
 import { mockDb } from '@/mocks/db';
+import { baseApi } from '@/services/api/baseApi';
 import { API_BASE_URL } from '@/utils/constants';
 
 import { columnValues, renderApp, requests, setupMockApi } from './renderApp';
@@ -50,6 +51,23 @@ describe('Orders page', () => {
     await waitFor(() => expect(orderNumbers()).toEqual(['ORD-0001']));
     expect(screen.getByText('Page 1 of 1 · 1 total')).toBeInTheDocument();
     expect(requests.at(-1)?.url.searchParams.get('orderNumber:contains')).toBe('0001');
+  });
+
+  it('moves back to the last page when orders disappear from the page being viewed (BUG-003)', async () => {
+    const { user, store } = await openOrders();
+    for (let i = 0; i < 3; i++) await user.click(screen.getByRole('button', { name: 'Next page' }));
+    await waitFor(() => expect(screen.getByText(`Page 4 of 4 · ${seed.orders.length} total`)).toBeInTheDocument());
+
+    // Another admin removes the 15 oldest orders, then the list refetches.
+    const oldest = [...seed.orders].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 15);
+    oldest.forEach((o) => mockDb.remove('orders', o.id));
+    store.dispatch(baseApi.util.invalidateTags([{ type: 'Order', id: 'LIST' }]));
+
+    const remaining = seed.orders.filter((o) => !oldest.includes(o));
+    await waitFor(() => expect(screen.getByText(`Page 3 of 3 · ${remaining.length} total`)).toBeInTheDocument());
+    expect(orderNumbers()).toEqual(
+      [...remaining].sort((a, b) => b.date.localeCompare(a.date)).slice(20).map((o) => o.orderNumber),
+    );
   });
 
   it("updates an order's status from its detail page", async () => {
