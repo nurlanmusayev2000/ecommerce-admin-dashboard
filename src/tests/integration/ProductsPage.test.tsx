@@ -134,6 +134,59 @@ describe('Products page', () => {
     expect(requests.filter((r) => r.method === 'POST')).toEqual([]);
   });
 
+  it('rejects names that are only spaces or too short once trimmed, when adding (BUG-002)', async () => {
+    const { user } = await openProducts();
+    await user.click(screen.getByRole('button', { name: 'Add Product' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add Product' });
+    const name = within(dialog).getByLabelText('Name');
+    await user.clear(within(dialog).getByLabelText('Price'));
+    await user.type(within(dialog).getByLabelText('Price'), '10');
+    await user.clear(within(dialog).getByLabelText('Stock'));
+    await user.type(within(dialog).getByLabelText('Stock'), '5');
+
+    await user.type(name, '   ');
+    await user.click(within(dialog).getByRole('button', { name: 'Create product' }));
+    expect(await within(dialog).findByText('Name is required')).toBeInTheDocument();
+
+    await user.clear(name);
+    await user.type(name, '  ab  ');
+    await user.click(within(dialog).getByRole('button', { name: 'Create product' }));
+    expect(await within(dialog).findByText('Name must be at least 3 characters')).toBeInTheDocument();
+
+    expect(requests.filter((r) => r.method === 'POST')).toEqual([]);
+    expect(mockDb.list('products')).toHaveLength(seed.products.length);
+
+    // A valid name with surrounding spaces is saved trimmed.
+    await user.clear(name);
+    await user.type(name, '  Desk Lamp  ');
+    await user.click(within(dialog).getByRole('button', { name: 'Create product' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('"Desk Lamp" created');
+    expect(mockDb.list('products').some((p) => p.name === 'Desk Lamp')).toBe(true);
+  });
+
+  it('rejects a name that is only spaces when editing, and trims a valid one (BUG-002)', async () => {
+    const { user } = await openProducts();
+    const target = newestFirst(seed.products)[0];
+    const id = seed.products.find((p) => p.name === target)!.id;
+
+    await user.click(screen.getByRole('button', { name: `Edit ${target}` }));
+    const dialog = await screen.findByRole('dialog', { name: 'Edit Product' });
+    const name = within(dialog).getByLabelText('Name');
+
+    await user.clear(name);
+    await user.type(name, '   ');
+    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }));
+    expect(await within(dialog).findByText('Name is required')).toBeInTheDocument();
+    expect(requests.filter((r) => r.method === 'PATCH')).toEqual([]);
+    expect(mockDb.findById('products', id)).toMatchObject({ name: target });
+
+    await user.clear(name);
+    await user.type(name, '  Renamed Laptop  ');
+    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('"Renamed Laptop" updated');
+    expect(mockDb.findById('products', id)).toMatchObject({ name: 'Renamed Laptop' });
+  });
+
   it('edits a product and updates its row', async () => {
     const { user } = await openProducts();
     const target = newestFirst(seed.products)[0];

@@ -83,6 +83,9 @@ export function ProductForm({ isOpen, product, onClose }: ProductFormProps) {
           label="Name"
           error={errors.name?.message}
           {...register('name', {
+            // Trim before validating and saving, so a name of only spaces fails "required"
+            // and minLength counts real characters.
+            setValueAs: (value: string) => value.trim(),
             required: 'Name is required',
             minLength: { value: 3, message: 'Name must be at least 3 characters' },
           })}
