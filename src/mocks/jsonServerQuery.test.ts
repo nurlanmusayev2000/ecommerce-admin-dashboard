@@ -45,6 +45,33 @@ describe('parseWhere', () => {
   });
 });
 
+describe('text operators keep the raw string (BUG-001)', () => {
+  it('does not coerce values for contains, startsWith and endsWith', () => {
+    const params = new URLSearchParams('code:contains=0001&code:startsWith=007&code:endsWith=10.50&flag:contains=true');
+    expect(parseWhere(params)).toEqual({
+      code: { contains: '0001', startsWith: '007', endsWith: '10.50' },
+      flag: { contains: 'true' },
+    });
+  });
+
+  it('matches leading zeros literally', () => {
+    const orders = [{ orderNumber: 'ORD-0001' }, { orderNumber: 'ORD-0010' }, { orderNumber: 'ORD-0021' }];
+    const result = queryCollection(orders, new URLSearchParams('orderNumber:contains=0001'));
+    expect(result).toEqual([{ orderNumber: 'ORD-0001' }]);
+  });
+
+  it('still converts numeric operators and keeps json-server behaviour for eq, ne and in', () => {
+    const params = new URLSearchParams('price:gte=50&price:lt=1e3&status=active&stock:eq=0&id:ne=7&id:in=1,2&live:eq=true');
+    expect(parseWhere(params)).toEqual({
+      price: { gte: 50, lt: 1000 },
+      status: { eq: 'active' },
+      stock: { eq: 0 },
+      id: { ne: 7, in: [1, 2] },
+      live: { eq: true },
+    });
+  });
+});
+
 describe('queryCollection filters', () => {
   it('applies numeric range operators', () => {
     expect(ids(query('price:gte=50&price:lte=300'))).toEqual(['2', '4']);

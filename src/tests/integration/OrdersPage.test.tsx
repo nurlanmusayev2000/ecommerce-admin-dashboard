@@ -41,6 +41,17 @@ describe('Orders page', () => {
     await waitFor(() => expect(orderNumbers()).toEqual(newestFirst(seed.orders)));
   });
 
+  it('searches order numbers as text, keeping leading zeros (BUG-001)', async () => {
+    const { user } = await openOrders();
+
+    await user.type(screen.getByLabelText('Search orders by order number'), '0001');
+
+    // "0001" used to be turned into the number 1, which matched every order containing a 1.
+    await waitFor(() => expect(orderNumbers()).toEqual(['ORD-0001']));
+    expect(screen.getByText('Page 1 of 1 · 1 total')).toBeInTheDocument();
+    expect(requests.at(-1)?.url.searchParams.get('orderNumber:contains')).toBe('0001');
+  });
+
   it("updates an order's status from its detail page", async () => {
     const { user, pathname } = await openOrders();
     const order = [...seed.orders].sort((a, b) => b.date.localeCompare(a.date))[0];

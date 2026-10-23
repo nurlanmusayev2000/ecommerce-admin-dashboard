@@ -111,17 +111,27 @@ function setCondition(
   (node as OperatorConditions)[op] = value;
 }
 
+const TEXT_OPERATORS: ReadonlySet<WhereOperator> = new Set(['contains', 'startsWith', 'endsWith']);
+
+/**
+ * Text operators compare strings, so their value stays exactly as typed; coercing would turn
+ * "0001" into 1 and match every value containing "1". This intentionally differs from
+ * json-server, which coerces every operator. Numeric operators and eq, ne and in keep
+ * json-server's coercion.
+ */
+function conditionValue(op: WhereOperator, rawValue: string): JsonValue {
+  if (TEXT_OPERATORS.has(op)) return rawValue;
+  if (op === 'in') return rawValue.split(',').map((part) => coerceValue(part.trim()));
+  return coerceValue(rawValue);
+}
+
 export function parseWhere(params: URLSearchParams): Where {
   const where: Where = {};
   for (const [rawKey, rawValue] of params.entries()) {
     if (RESERVED_QUERY_KEYS.has(rawKey)) continue;
     const { path, op } = splitKey(rawKey);
     if (op === null) continue;
-    const value =
-      op === 'in'
-        ? rawValue.split(',').map((part) => coerceValue(part.trim()))
-        : coerceValue(rawValue);
-    setCondition(where, path, op, value);
+    setCondition(where, path, op, conditionValue(op, rawValue));
   }
   return where;
 }
